@@ -1,5 +1,3 @@
-``markdown
-
 # BlogMaster
 
 BlogMaster is a RESTful API for a blog platform that allows users to create, read, update, and delete blog posts, as well as manage tags associated with those posts. It is built using Node.js, Express, and MySQL (with Sequelize ORM).
@@ -158,7 +156,3 @@ A detailed and comprehensive UTP file has been included in the root directory: `
 - **GitHub**: [gautamuniverse](https://github.com/gautamuniverse)
 - **LinkedIn**: [Gautam](https://www.linkedin.com/in/gautam-116307bb/)
 - **Instagram**: [@gautamuniverse.in](https://www.instagram.com/gautamuniverse.in/)
-
-```
-
-```
