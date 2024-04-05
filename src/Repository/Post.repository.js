@@ -49,22 +49,46 @@ class PostRepository {
   //Function to delete a specific post by its id
   async deletePostById(id, email) {
     try {
-      //cehck if the user owns the post
-      const foundPost = await this.getPostById(id);
+      // Find the user by email
+      const user = await User.findOne({ where: { email: email } });
 
-      if (!foundPost || foundPost.email !== email) {
+      if (!user) {
         return {
           success: false,
-          message: "You are not authorized to perform this action",
+          message: "User not found!",
         };
       }
+      let post;
+      // Check if the user is admin
+      if (user.role !== "admin") {
+        // If the user is not admin, check if the post belongs to the user
+        post = await Post.findByPk(id, { include: Tag });
 
-      const post = await Post.destroy({
+        if (!post) {
+          return {
+            success: false,
+            message: "Post not found",
+          };
+        }
+
+        if (post.email !== email) {
+          return {
+            success: false,
+            message: "You are not authorized to perform this action",
+          };
+        }
+      }
+
+      post = await Post.destroy({
         where: {
           id: id,
         },
       });
-      return post;
+      if (post > 0)
+        return {
+          success: true,
+          message: "Post deleted successfully!",
+        };
     } catch (err) {
       throw err;
     }
