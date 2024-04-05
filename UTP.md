@@ -273,5 +273,5 @@
 **Expected Result:**
 - The application should respond with appropriate error status codes (e.g., 400 Bad Request, 401 Unauthorized, 404 Not Found, 500 Internal Server Error) and meaningful error messages.
 - Error responses should not expose sensitive information or internal implementation details.
-- User input should be properly validated and sanitized to prevent security vulnerabilities.
+- User input should be properly validated to prevent security vulnerabilities.
 - Server-side errors or exceptions should be handled gracefully without causing the application to crash or leak sensitive information.
