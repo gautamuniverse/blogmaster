@@ -1,283 +1,410 @@
+import { Op } from "sequelize";
+import Post from "../Model/Post.js";
 import Tag from "../Model/Tag.js";
-import PostRepository from "../Repository/Post.repository.js";
-import UserRepository from "../Repository/User.repository.js";
+import User from "../Model/User.js";
 import AppplicationError from "../errorHandler/errorHandler.js";
 
-export default class PostController {
-  constructor() {
-    this.postRepository = new PostRepository();
-  }
-
+class PostRepository {
   //Function to add a new post
-  async addPost(req, res, next) {
+  async addPost(data) {
     try {
-      //Get the values from the body.
-      const { content, tags } = req.body;
-
-      if (!content) throw new AppplicationError("Content is required", 400);
-
-      //Get the email from the req
-      const email = req.email;
-
-      //get the user details from the User table
-      const userDetails = await new UserRepository().findByEmail(email);
-
-      //Get the name from the userDetails
-      const name = userDetails.name;
-
-      //Create an object with all the data and pass it to the repository function
-      const newPost = {
-        author: name,
-        content,
-        email,
-      };
-
-      const addedPost = await this.postRepository.addPost(newPost);
-      //Tags are not empty then we will be creating each tag storing into the Tag table first and then we will push the newly created tag into the array which we will add to the existing Post
-      if (tags) {
-        // Array for holding the tag objects
-        const tagObjects = [];
-
-        // Iterate through the tags
-        for (const tag of tags) {
-          // Find the tag in the database
-          let existingTag = await Tag.findOne({ where: { tag: tag } });
-
-          // If the tag doesn't exist, create it
-          if (!existingTag) {
-            existingTag = await Tag.create({ tag: tag });
-          }
-
-          // Push the tag object to the array
-          tagObjects.push(existingTag);
-        }
-        // Add the tags to the post
-        await addedPost.addTags(tagObjects);
-      }
-
-      return res.status(201).send({
-        success: true,
-        message: "Post created successfull!",
-        data: addedPost,
-        tags: tags ? tags : null,
-      });
+      const post = await Post.create(data);
+      return post;
     } catch (err) {
-      next(err);
+      throw err;
     }
   }
 
   //function to get all the posts
-  async getAllPosts(req, res, next) {
+  async getAllPosts() {
     try {
-      const posts = await this.postRepository.getAllPosts();
-      if (!posts) throw new AppplicationError("No posts found!", 404);
-      return res.status(200).send({
-        success: true,
-        data: posts,
+      const posts = await Post.findAll({
+        include: {
+          model: Tag,
+          attributes: ["id", "tag"], // Include only id and tag fields from Tag model
+        },
       });
+      return posts;
     } catch (err) {
-      next(err);
+      throw err;
     }
   }
 
   //function to get all the posts by a specific user
-  async getPostsByEmail(req, res, next) {
+  async getPostsByEmail(email) {
     try {
-      //get the email from the req
-      const email = req.email;
-      const posts = await this.postRepository.getPostsByEmail(email);
-      if (!posts) throw new AppplicationError("No posts found!", 404);
-      return res.status(200).send({
-        success: true,
-        data: posts,
+      const posts = await Post.findAll({
+        where: { email: email },
+        include: {
+          model: Tag,
+          attributes: ["id", "tag"], // Include only id and tag fields from Tag model
+        },
       });
+      return posts;
     } catch (err) {
-      next(err);
-    }
-  }
-
-  //Function to get post by id
-  async getPostById(req, res, next) {
-    try {
-      //Get the id
-      const id = req.params.id;
-      if (!id)
-        return res.status(404).send({
-          success: false,
-          message: "Id is not  provided!",
-        });
-
-      //get the post
-      const result = await this.postRepository.getPostById(id);
-
-      if (result.success) return res.status(200).send(result);
-      else return res.status(404).send(result);
-    } catch (err) {
-      next(err);
+      throw err;
     }
   }
 
   //Function to delete a specific post by its id
-  async deletePostById(req, res, next) {
+  async deletePostById(id, email) {
     try {
-      //Get the email to make sure that the user deleted their own post only
-      const email = req.email;
+      // Find the user by email
+      const user = await User.findOne({ where: { email: email } });
 
-      //validate the id
-      const id = req.params.id;
-      console.log(req.params);
-      if (!id) throw new AppplicationError("Please pass the post id", 404);
-      //delete the post using the id
-      const result = await this.postRepository.deletePostById(id, email);
-      if (!result) throw new AppplicationError("The Post was not deleted!");
-
-      return res.status(200).send({
-        success: true,
-        message: "Deleted Successfully",
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-  // Update post content or tag or both.
-  async updatePost(req, res, next) {
-    try {
-      //get the id
-      const id = req.params.id;
-
-      //Get the email to make sure that the user deleted their own post only
-      const email = req.email;
-
-      //get the data from the body
-      const { content, tags } = req.body;
-
-      //Validate the values
-      if (!id) {
-        return new AppplicationError("id is missing!", 400);
-      }
-
-      const updatedPostData = {
-        content,
-      };
-
-      let updatedTags = tags ? tags : null;
-
-      //Update the post
-      const result = await this.postRepository.updatePost(
-        id,
-        updatedPostData,
-        updatedTags,
-        email
-      );
-      if (result.success) return res.status(201).send(result);
-      else return res.status(400).send(result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  //Function to add tags to an existing post
-  async addTagsToPost(req, res, next) {
-    try {
-      //Get the post id
-      const id = req.params.id;
-
-      //Get the email to make sure that the user deleted their own post only
-      const email = req.email;
-
-      //get the tags
-      const { tags } = req.body;
-
-      //Validate the values
-      if (!id || !tags) {
-        return new AppplicationError("id, tags or both are missing!", 400);
-      }
-
-      const result = await this.postRepository.addTagsToPost(id, tags, email);
-
-      if (result.success) return res.status(201).send(result);
-      else return res.status(400).send(result);
-    } catch (err) {
-      next(err);
-    }
-  }
-  //Function to remove tags from a sepcific post
-  async deleteTagsFromPost(req, res, next) {
-    try {
-      const id = req.params.id;
-      const { tags } = req.body;
-
-      //Get the email to make sure that the user deleted their own post only
-      const email = req.email;
-
-      //Validate the values
-      if (!id) {
-        return new AppplicationError("id is missing!", 400);
-      }
-
-      //Validate the values
-      if (!tags) {
-        return new AppplicationError("tags are missing!", 400);
-      }
-
-      //Delete the tags
-      const result = await this.postRepository.deleteTagsFromPost(
-        id,
-        tags,
-        email
-      );
-      if (!result.success) return res.status(404).send(result);
-      else return res.status(200).send(result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  //Function to search posts based on tags
-  async searchPostsByTags(req, res, next) {
-    try {
-      const { tags } = req.body;
-      //Validate the values
-      if (!tags) {
-        return new AppplicationError("Tags are missing!", 400);
-      }
-
-      //get the posts
-      const result = await this.postRepository.searchPostsByTags(tags);
-
-      if (!result.success) return res.status(404).send(result);
-      else return res.status(200).send(result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  async filterPosts(req, res, next) {
-    try {
-      let { startDate, endDate, author, tags } = req.body;
-
-      // Parse dates only if they are provided
-      if (startDate) startDate = new Date(startDate);
-      if (endDate) endDate = new Date(endDate);
-
-      //If no filter options passed by user then show error response.
-      if (!startDate && !endDate && !author && !tags)
-        return res.status(400).send({
+      if (!user) {
+        return {
           success: false,
-          message:
-            "Please provide at least one filter criterion to search posts!",
-        });
+          message: "User not found!",
+        };
+      }
+      let post;
+      // Check if the user is admin
+      if (user.role !== "admin") {
+        // If the user is not admin, check if the post belongs to the user
+        post = await Post.findByPk(id, { include: Tag });
 
-      const result = await this.postRepository.filterPosts({
-        startDate,
-        endDate,
-        author,
-        tags,
+        if (!post) {
+          return {
+            success: false,
+            message: "Post not found",
+          };
+        }
+
+        if (post.email !== email) {
+          return {
+            success: false,
+            message: "You are not authorized to perform this action",
+          };
+        }
+      }
+
+      post = await Post.destroy({
+        where: {
+          id: id,
+        },
       });
-      if (!result.success) return res.status(404).send(result);
-      else return res.status(200).send(result);
+      if (post > 0)
+        return {
+          success: true,
+          message: "Post deleted successfully!",
+        };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  //Function to get post by id
+  async getPostById(id) {
+    try {
+      // Find the post by ID
+      const post = await Post.findByPk(id, {
+        include: {
+          model: Tag,
+          attributes: ["id", "tag"], // Include only id and tag fields from Tag model
+        },
+      });
+
+      if (!post) {
+        return {
+          success: false,
+          message: "Post not found",
+        };
+      } else
+        return {
+          success: true,
+          message: post,
+        };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  //Function to update a post
+  async updatePost(postId, updatedPostData, updatedTags, email) {
+    try {
+      //   // Find the post by ID
+      //   const post = await Post.findByPk(postId);
+
+      //   if (!post || post.email !== email) {
+      //     return {
+      //       success: false,
+      //       message: "You are not authorized to perform this action",
+      //     };
+      //   }
+
+      // Find the user by email
+      const user = await User.findOne({ where: { email: email } });
+
+      if (!user) {
+        return {
+          success: false,
+          message: "User not found!",
+        };
+      }
+      let post;
+      // Check if the user is admin
+      if (user.role !== "admin") {
+        // If the user is not admin, check if the post belongs to the user
+        post = await Post.findByPk(postId, { include: Tag });
+
+        if (!post) {
+          return {
+            success: false,
+            message: "Post not found",
+          };
+        }
+
+        if (post.email !== email) {
+          return {
+            success: false,
+            message: "You are not authorized to perform this action",
+          };
+        }
+      }
+
+      // Update post details
+      if (!post) post = await Post.findByPk(postId, { include: Tag });
+
+      await post.update(updatedPostData);
+
+      // If updatedTags are provided, update the tags associated with the post
+      if (updatedTags && updatedTags.length > 0) {
+        // Remove existing tags from the post
+        await post.setTags([]);
+
+        // Add updated tags to the post
+        const tagObjects = [];
+        for (const tagName of updatedTags) {
+          let tag = await Tag.findOne({ where: { tag: tagName } });
+          if (!tag) {
+            tag = await Tag.create({ tag: tagName });
+          }
+          tagObjects.push(tag);
+        }
+        await post.addTags(tagObjects);
+      }
+
+      //Remove the existing tags which are not associated with any post
+      //get all tags
+      const allTags = await Tag.findAll({});
+      for (const tag of allTags) {
+        const associatedPostsCount = await tag.countPosts();
+        if (associatedPostsCount === 0) {
+          // If the tag is not associated with any other post, remove it from the Tag table
+          await tag.destroy();
+        }
+      }
+
+      return {
+        success: true,
+        message: "Post updated successfully",
+      };
     } catch (error) {
-      next(error);
+      console.error("Error updating post:", error);
+      throw error;
+    }
+  }
+
+  // Function to add tags to an existing post
+  async addTagsToPost(id, tags, email) {
+    try {
+      // Find the user by email
+      const user = await User.findOne({ where: { email: email } });
+
+      if (!user) {
+        return {
+          success: false,
+          message: "User not found!",
+        };
+      }
+      let post;
+      // Check if the user is admin
+      if (user.role !== "admin") {
+        // If the user is not admin, check if the post belongs to the user
+        post = await Post.findByPk(id, { include: Tag });
+
+        if (!post) {
+          return {
+            success: false,
+            message: "Post not found",
+          };
+        }
+
+        if (post.email !== email) {
+          return {
+            success: false,
+            message: "You are not authorized to perform this action",
+          };
+        }
+      }
+
+      // Update post details
+      if (!post) post = await Post.findByPk(id, { include: Tag });
+
+      // Array to hold tag objects
+      const tagObjects = [];
+
+      for (const tag of tags) {
+        // Find the tag in the database
+        let existingTag = await Tag.findOne({ where: { tag: tag } });
+
+        // If the tag doesn't exist, create it
+        if (!existingTag) {
+          existingTag = await Tag.create({ tag: tag });
+        }
+
+        // Push the tag object to the array
+        tagObjects.push(existingTag);
+      }
+
+      // Add the tags to the post (appends to the existing list if initially not empty)
+      await post.addTags(tagObjects);
+
+      return {
+        success: true,
+        message: "Tags added to post successfully",
+      };
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  }
+
+  //Function to delete the existing tags for a post
+  async deleteTagsFromPost(id, tagsToRemove, email) {
+    try {
+      // Find the user by email
+      const user = await User.findOne({ where: { email: email } });
+
+      if (!user) {
+        return {
+          success: false,
+          message: "User not found!",
+        };
+      }
+      let post;
+      // Check if the user is admin
+      if (user.role !== "admin") {
+        // If the user is not admin, check if the post belongs to the user
+        post = await Post.findByPk(id, { include: Tag });
+
+        if (!post) {
+          return {
+            success: false,
+            message: "Post not found",
+          };
+        }
+
+        if (post.email !== email) {
+          return {
+            success: false,
+            message: "You are not authorized to perform this action",
+          };
+        }
+      }
+
+      // Update post details
+      if (!post) post = await Post.findByPk(id, { include: Tag });
+      // Find the tags to be removed
+      const tags = await Tag.findAll({ where: { tag: tagsToRemove } });
+
+      //Handle the case where no user passed tags match the existing tags for the post
+      if (tags.length === 0) {
+        return {
+          success: false,
+          message: "No tags found to remove",
+        };
+      }
+
+      // Remove the tags from the post
+      await post.removeTags(tags);
+
+      // Check if the removed tags are associated with any other post
+      for (const tag of tags) {
+        const associatedPostsCount = await tag.countPosts();
+        if (associatedPostsCount === 0) {
+          // If the tag is not associated with any other post, remove it from the Tag table
+          await tag.destroy();
+        }
+      }
+
+      return {
+        success: true,
+        message: "Tags removed from post successfully",
+      };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  //Function to seach posts based on the tags
+  async searchPostsByTags(tags) {
+    try {
+      // Find posts based on tags
+      const posts = await Post.findAll({
+        include: {
+          model: Tag,
+          where: { tag: tags }, // filter posts based on tags
+        },
+      });
+
+      if (posts.length === 0)
+        return {
+          success: false,
+          message: "No posts found based on the provided tags",
+        };
+      return {
+        success: true,
+        message: posts,
+      };
+    } catch (error) {
+      console.error("Error searching posts by tags:", error);
+      throw error;
+    }
+  }
+
+  //Function to search/filter posts based on various options passed by user
+  async filterPosts(options) {
+    try {
+      // Define default options
+      const { startDate, endDate, author, tags } = options;
+      // Construct the where object based on the provided filters
+      const where = {};
+      if (startDate && endDate) {
+        where.createdAt = { [Op.between]: [startDate, endDate] };
+      } else if (startDate) {
+        where.createdAt = { [Op.gte]: startDate };
+      } else if (endDate) {
+        where.createdAt = { [Op.lte]: endDate };
+      }
+      if (author) {
+        where.author = author;
+      }
+      if (tags && tags.length > 0) {
+        where["$Tags.tag$"] = { [Op.in]: tags }; // Filter posts based on tags
+      }
+
+      // Find posts based on the constructed where object
+      const posts = await Post.findAll({
+        where: where,
+        include: { model: Tag },
+      });
+
+      if (posts.length === 0)
+        return {
+          success: false,
+          message: "No posts found based on the provided search criterea",
+        };
+      return {
+        success: true,
+        message: posts,
+      };
+    } catch (error) {
+      console.error("Error filtering posts:", error);
+      throw error;
     }
   }
 }
+
+export default PostRepository;
