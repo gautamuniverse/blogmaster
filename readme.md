@@ -118,7 +118,7 @@ JWT authentication is automatically taken care of with the JWT token placed in c
 
 To get started with BlogMaster:
 
-1. Clone the repository
+1. Clone the repository `https://github.com/gautamuniverse/blogmaster.git`
 2. Create a `.env` file in the root directory and provide the following keys:
    - `JWT_SECRET` (for JWT token creation)
    - `DB_URL` (MySQL database URL)
