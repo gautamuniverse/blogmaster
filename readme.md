@@ -27,8 +27,8 @@ BlogMaster is a RESTful API for a blog platform that allows users to create, rea
   - Only admins can delete posts and manage tags for all posts
   - Regular users can only edit their own posts and tags
 - **Error Handling and Validation**:
-  - Comprehensive error handling for API endpoints
-  - Input validation and sanitization for tag names and other relevant data
+  - Comprehensive error handling for API endpoints using a custom Application level error handler.
+  - Input validation for tag names and other relevant data
 
 ## API Endpoints (With Sample Data)
 
