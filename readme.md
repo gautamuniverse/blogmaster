@@ -134,6 +134,10 @@ To test the functionality of the application, open the `BlogMaster.postman_colle
 
 A detailed and comprehensive UTP file has been included in the root directory: `UTP.md`
 
+## Demo/Walkthrough Video
+
+[Demo Video](https://drive.google.com/file/d/1_G9AWmMv4AOfA0_AtNAjMg1RXJNwEkSx/view?usp=sharing)
+
 ## Tech Stack
 
 - Node.js
